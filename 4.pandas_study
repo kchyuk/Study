@@ -1,0 +1,110 @@
+from urllib.request import *
+from bs4 import *
+import numpy as np
+import pandas as pd
+
+# 2.1 한글 이름 추가
+def translate_name(sample):
+    poke_df = pd.read_csv("./pokemon.csv").fillna('missing')
+    req = Request('https://bulbapedia.bulbagarden.net/wiki/List_of_Korean_Pok%C3%A9mon_names#External_links')
+    req.add_header('User-Agent', 'Mozilla/5.0')  # 정상적인 웹 크롤러라고 헤더에 표시
+    wp = urlopen(req);
+    soup = BeautifulSoup(wp, 'html.parser')  # parsing
+    trlist = soup.find_all('tr', {'style': "background:#FFF"})  # tr 태그 중에..
+    korean_list = [trlist[a].get_text().split()[2] for a in range(801)]  # 사이트에서 포켓몬 한글 이름 가져오기
+    poke_df['korean_name'] = korean_list
+
+    if sample in poke_df['korean_name'].values:
+        return poke_df['name'][list(poke_df['korean_name'].values).index(sample)]
+
+    elif sample in poke_df['name'].values:
+        return poke_df['korean_name'][list(poke_df['name'].values).index(sample)]
+
+    elif sample not in poke_df['name'].values:
+        return poke_df['korean_name'][list(poke_df['name'].values).index(sample.capitalize())]
+
+#2.2 capture
+def capture(start_r, stop_r):
+    poke_df = pd.read_csv("./pokemon.csv").fillna('missing')
+    poke_df.drop(list(poke_df.capture_rate.values).index('30 (Meteorite)255 (Core)'), axis=0, inplace=True)
+    poke_df.reset_index(inplace=True)  # index 재지정
+
+    capture_rate_list = [int(i) for i in list(poke_df['capture_rate'].values)]
+    capture_rate_check_index = []
+    capture_rate_check_name_list = []
+
+    for e, x in enumerate(capture_rate_list):
+        if start_r <= x <= stop_r:
+            capture_rate_check_index.append(e)
+
+    for b in capture_rate_check_index:
+        capture_rate_check_name_list.append(poke_df['name'][b])
+
+    return capture_rate_check_name_list
+
+#2.3 species_count
+def species_count(sample):
+    return len(set(sample))
+
+#2.4 max_defense
+def max_defense(sample):
+    poke_df = pd.read_csv("./pokemon.csv").fillna('missing')
+    find_defense_values = [poke_df['defense'][b] for b in
+                           [list(poke_df['name'].values).index(a) for a in list(set(sample))]]
+    find_name = [poke_df['name'][b] for b in [list(poke_df['name'].values).index(a) for a in list(set(sample))]]
+    max_defense_value = max(find_defense_values)
+    max_defense_df = poke_df.loc[poke_df['name'].isin(find_name) & (poke_df['defense'] == max_defense_value)]
+    t1 = max_defense_df.name.values;
+    t2 = max_defense_df.defense.values
+
+    return [(at1, at2) for at1, at2 in zip(t1, t2)]
+
+#2.5 filter_range
+def filter_range(sample, filter_col='attack', start_p=20, stop_p=60):
+    poke_df = pd.read_csv("./pokemon.csv").fillna('missing')
+    index_values = []
+    filter_range_df = poke_df[poke_df.name.isin(sample)]
+    filter_range_df.reset_index(inplace=True)
+    filter_range_final = []
+
+    for i, a in enumerate(list(filter_range_df[filter_col])):
+        if start_p <= a <= stop_p:
+            index_values.append(i)
+
+    for b in index_values:
+        filter_range_final.append((filter_range_df.name[b], filter_range_df[filter_col][b]))
+
+    return filter_range_final
+
+#2.6 mean_attack_for_type
+def mean_attack_for_type(sample, filter_type='fire', filter_col='attack'):
+    poke_df = pd.read_csv("./pokemon.csv").fillna('missing')
+    filter_range_df = poke_df[poke_df.name.isin(sample)]
+    filter_range_df.reset_index(inplace=True)
+
+    try:
+        mean_df = filter_range_df.loc[(filter_range_df.type1 == filter_type) | (filter_range_df.type2 == filter_type)]
+        return np.round(np.mean(mean_df[filter_col].values), 1)
+    except:
+        return print(None)
+
+#2.7 count_types
+def count_types(sample):
+    poke_df = pd.read_csv("./pokemon.csv").fillna('missing')
+    count_types_dict = {}
+
+    global filter_range_df
+    filter_range_df = poke_df[poke_df.name.isin(sample)]
+    filter_range_df.reset_index(inplace=True)
+    type_name, type_count = np.unique(np.concatenate((filter_range_df.type1.values, filter_range_df.type2.values)),
+                                      return_counts=True)
+
+    for a, b in zip(type_name, type_count):
+        count_types_dict[a] = b
+
+    if 'missing' in count_types_dict:
+        del count_types_dict['missing']
+        return count_types_dict
+
+    else:
+        return count_types_dict
