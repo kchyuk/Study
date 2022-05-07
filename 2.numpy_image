@@ -1,0 +1,174 @@
+from PIL import Image, ImageFilter
+import urllib.request
+import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
+import numpy as np
+import pandas as pd
+
+url = 'https://raw.githubusercontent.com/k5yi/econ2005/master/datasets/%EC%8B%9C%EC%95%84.png'
+im = Image.open(urllib.request.urlopen(url))
+img = mpimg.imread(r'시아.png')
+img = np.array(im)
+
+#3.1 invert image
+def invert_image(sample):
+    plt.imshow(255-sample)
+
+#3.2 grayscale image
+weights=np.array([0.2989, 0.5870, 0.1140])
+def grayscale_image(sample):
+     plt.imshow(np.int_((sample[:,:,0]*weights[0])+(sample[:,:,1]*weights[1])+(sample[:,:,2]*weights[2])),'gray')
+
+#3.3 image segmentation
+def boundary (sample, cutoff=100):
+    plt.imshow(np.where((sample)[:,:,[0,0,0]]>=cutoff,255,0))
+
+#3.4 flip image
+def flip(sample, by='vertical'):
+    if by=='vertical':
+        plt.imshow(sample[::-1])
+    elif by=='horizontal':
+        plt.imshow(np.stack([sample[x][::-1] for x in range(0,256)]))
+
+#3.5 padding
+def padding(sample, padding_size=(10,20), pad=255):
+    if type(padding_size) == int:
+        plt.imshow(np.pad(sample,((padding_size, padding_size), (padding_size, padding_size), (0, 0)),mode='constant', constant_values=pad))
+    elif type(padding_size) == tuple:
+        plt.imshow(np.pad(sample,((padding_size[0], padding_size[0]), (padding_size[1], padding_size[1]), (0, 0)),mode='constant', constant_values=pad))
+
+#3.6 blur
+def blur(sample, kernel_size=12, method="mean"):
+    if kernel_size % 2 == 0:
+
+        padded = np.pad(sample, (
+        (int(kernel_size / 2), int(kernel_size / 2)), (int(kernel_size / 2), int(kernel_size / 2)), (0, 0)),
+                        mode='constant', constant_values=255)
+        blur_list = []
+
+        if method == "mean":
+
+            for x in range(int(kernel_size / 2), int(padded.shape[0] - (kernel_size / 2))):
+                for i in range(0, int(padded.shape[1] - kernel_size)):
+                    for j in range(0, padded.shape[2]):
+                        blur_list.append(np.int_(np.mean(padded[x][i:i + kernel_size, j:j + kernel_size])))
+
+            plt.imshow(
+                (np.array(blur_list)).reshape(sample.shape[0], sample.shape[1], sample.shape[2])[:, :, [0, 0, 0]])
+
+        elif method == "min":
+
+            for x in range(int(kernel_size / 2), int(padded.shape[0] - (kernel_size / 2))):
+                for i in range(0, int(padded.shape[1] - kernel_size)):
+                    for j in range(0, padded.shape[2]):
+                        blur_list.append(np.int_(np.min(padded[x][i:i + kernel_size, j:j + kernel_size])))
+            plt.imshow(
+                (np.array(blur_list)).reshape(sample.shape[0], sample.shape[1], sample.shape[2])[:, :, [0, 0, 0]])
+
+        elif method == "max":
+
+            for x in range(int(kernel_size / 2), int(padded.shape[0] - (kernel_size / 2))):
+                for i in range(0, int(padded.shape[1] - kernel_size)):
+                    for j in range(0, padded.shape[2]):
+                        blur_list.append(np.int_(np.max(padded[x][i:i + kernel_size, j:j + kernel_size])))
+            plt.imshow(
+                (np.array(blur_list)).reshape(sample.shape[0], sample.shape[1], sample.shape[2])[:, :, [0, 0, 0]])
+
+    if kernel_size % 2 == 1:
+
+        padded = np.pad(sample, ((int((kernel_size - 1) / 2), int((kernel_size - 1) / 2)),
+                                 (int((kernel_size - 1) / 2), int((kernel_size - 1) / 2)), (0, 0)), mode='constant',
+                        constant_values=255)
+        blur_list = []
+
+        if method == "mean":
+
+            for x in range(int((kernel_size - 1) / 2), int(padded.shape[0] - ((kernel_size - 1) / 2))):
+                for i in range(0, int(padded.shape[1] - (kernel_size - 1))):
+                    for j in range(0, padded.shape[2]):
+                        blur_list.append(np.int_(np.mean(padded[x][i:i + kernel_size, j:j + kernel_size])))
+
+            plt.imshow(
+                (np.array(blur_list)).reshape(sample.shape[0], sample.shape[1], sample.shape[2])[:, :, [0, 0, 0]]);
+
+        elif method == "min":
+
+            for x in range(int((kernel_size - 1) / 2), int(padded.shape[0] - ((kernel_size - 1) / 2))):
+                for i in range(0, int(padded.shape[1] - (kernel_size - 1))):
+                    for j in range(0, padded.shape[2]):
+                        blur_list.append(np.int_(np.min(padded[x][i:i + kernel_size, j:j + kernel_size])))
+            plt.imshow(
+                (np.array(blur_list)).reshape(sample.shape[0], sample.shape[1], sample.shape[2])[:, :, [0, 0, 0]])
+
+        elif method == "max":
+
+            for x in range(int((kernel_size - 1) / 2), int(padded.shape[0] - ((kernel_size - 1) / 2))):
+                for i in range(0, int(padded.shape[1] - (kernel_size - 1))):
+                    for j in range(0, padded.shape[2]):
+                        blur_list.append(np.int_(np.max(padded[x][i:i + kernel_size, j:j + kernel_size])))
+            plt.imshow(
+                (np.array(blur_list)).reshape(sample.shape[0], sample.shape[1], sample.shape[2])[:, :, [0, 0, 0]])
+
+#3.7 (optional) filter
+def filtering(sample, sharpen_filter):
+    padded = np.pad(sample, ((1, 1), (1, 1), (0, 0)), mode='constant', constant_values=0)
+    filter_list = []
+
+    for x in range(1, 257):
+        for i in range(0, 256):
+            for j in range(0, 3):
+                filter_list.append(np.abs((np.max((np.matmul(sharpen_filter, padded[x][i:i + 3, j:j + 3]))))))
+
+    return np.int_(np.array(filter_list) / ((np.array(filter_list)).max() / 255.0)).reshape(256, 256, 3)
+
+
+#3.8 (optional) rotate image
+def change_angle_to_radius_unit(angle):
+    angle_radius = angle * (np.pi / 180)
+    return angle_radius
+
+
+def rotate(src_img, angle_of_rotation, pivot_point, shape_img):
+    # 1.create rotation matrix with numpy array
+    rotation_mat = np.transpose(np.array([[np.cos(angle_of_rotation), -np.sin(angle_of_rotation)],
+                                          [np.sin(angle_of_rotation), np.cos(angle_of_rotation)]]))
+    h, w = shape_img
+
+    pivot_point_x = pivot_point[0]
+    pivot_point_y = pivot_point[1]
+
+    new_img = np.zeros(src_img.shape, dtype='u1')
+
+    for height in range(h):  # h = number of row
+        for width in range(w):  # w = number of col
+            xy_mat = np.array([[width / 1.5 - pivot_point_x], [height / 1.5 - pivot_point_y]])
+
+            rotate_mat = np.dot(rotation_mat, xy_mat)
+
+            new_x = pivot_point_x + int(rotate_mat[0]) + 60
+            new_y = pivot_point_y + int(rotate_mat[1]) + 30
+
+            if (0 <= new_x <= w - 1) and (0 <= new_y <= h - 1):
+                new_img[new_y, new_x] = src_img[height, width]
+
+    return new_img
+
+#3.9 (optional) match image
+def matchImage(first_img, target_img):  # first_img는 캔버스, target_img는 커널의 개념으로 이해하고 작업했습니다.
+
+    def standardflat(sample):  # 샘플 값을 표준화(standardize)와 1차원(flatting)으로 변경해주는 함수
+        return np.ravel((sample - np.mean(sample)) / np.std(sample), order='C')
+
+    match_list = []  # 리스트 생성
+
+    # first_img 를 target_img 커널 크기만큼 찍어내면서 match_list에 담음
+    for a in range(0, first_img.shape[0] - target_img.shape[0]):
+        for b in range(0, first_img.shape[1] - target_img.shape[1]):
+            match_list.append(standardflat(first_img[a:a + target_img.shape[0], b:b + target_img.shape[1]]))
+
+    match_list.insert(0, (standardflat(target_img)).tolist())  # match_list 맨 앞에 기준이 되는 리스트를 담음
+    df = pd.DataFrame(abs(((pd.DataFrame(match_list).T).corr()).iloc[0]))
+    target_value = (df.index[df[0] == 1]).tolist()[1]  # 첫번째 1은 상관계수의 1, 두번째 1은 두번째 값 추출
+
+    plt.imshow(np.int_(((match_list[target_value] * np.std(target_img))) + np.mean(target_img)).reshape(
+        (target_img.shape[0], target_img.shape[1], target_img.shape[2])));
