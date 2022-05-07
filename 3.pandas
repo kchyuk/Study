@@ -1,0 +1,149 @@
+import numpy as np 
+import pandas as pd 
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+### 2.1  Type별 Pokémon의 종류
+
+poke_df = pd.read_csv("./pokemon.csv")
+poke_df.info()
+
+poke_df2 = poke_df.fillna('missing')
+
+print('포켓몬의 종류는',poke_df2.type1.unique(),'이다.','\n')
+print('포켓몬의 종류는',len(list(poke_df2.type1.unique())),'종이다.')
+
+print(poke_df2.type1.value_counts())
+
+poke_df2.type1.value_counts().plot.bar();
+
+### 2.2  unique type
+
+poke_df[['type1','type2']]
+
+poke_df2['type1-type2'] = poke_df2['type1'] + '-' + poke_df2['type2']
+
+# list(poke_df2['type1-type2'].unique())
+
+len(list(poke_df2['type1-type2'].unique()))
+
+poke_df2['type1-type2']
+
+print('There are {} unique pokémons out of 801.'.format(len(list(poke_df2['type1-type2'].unique()))))
+
+### 2.3  box plot
+
+type1_unique = list(poke_df2['type1'].unique())# type1_unique
+
+fig = plt.figure(figsize=(25,25))
+ax = [None] * (len(type1_unique))
+for i, a in enumerate(type1_unique):
+    ax[i] = fig.add_subplot(6,3,i+1)
+    ax[i] = poke_df2[poke_df2['type1']==a].boxplot(['defense','attack'])
+    ax[i] = ax[i].set_title(a)
+
+### 2.4  Efficiency Frontier
+
+#### Water type pokémon 중 효율성 경계에 위치한 포켓몬 찾기
+
+ef_water = poke_df2[poke_df2['type1'] == 'water'][['name','attack','defense']]
+ef_water
+
+ def is_pareto_front(row, xlabel, ylabel):
+    
+    x = row[xlabel]
+    y = row[ylabel]
+    
+    # look for points with the same y value but larger x value
+    is_max_x = ef_water.loc[ef_water[ylabel]==y].max()[xlabel] <= x
+    # look for points with the same x value but larger y value
+    is_max_y = ef_water.loc[ef_water[xlabel]==x].max()[ylabel] <= y
+    # look for points that are larger in both x and y
+    is_double = len(ef_water.loc[(ef_water[xlabel]>x) & (ef_water[ylabel]>y)])==0
+    
+    return is_max_x and is_max_y and is_double
+
+is_pareto = ef_water.apply(lambda row: is_pareto_front(row, 'attack', 'defense'), axis=1)
+
+config_pareto = ef_water.loc[is_pareto].sort_values('attack')
+
+fig, ax = plt.subplots(1,1, figsize=(8,5))
+sns.regplot(x='attack', y='defense', data=ef_water, fit_reg=False, ax=ax);
+plt.plot(config_pareto['attack'], config_pareto['defense'], '--', label='Pareto frontier', alpha=0.5);
+
+# print(ef_water.loc[is_pareto][['name','attack','defense']].sort_values('attack'))
+pd.DataFrame(ef_water.loc[is_pareto][['name','attack','defense']].sort_values('attack'))
+
+#### Normal type pokémon 중 효율성 경계에 위치한 포켓몬 찾기
+
+ef_normal = poke_df2[poke_df2['type1'] == 'normal'][['name','attack','defense']]
+ef_normal
+
+ def is_pareto_front(row, xlabel, ylabel):
+    
+    x = row[xlabel]
+    y = row[ylabel]
+    
+    # look for points with the same y value but larger x value
+    is_max_x = ef_normal.loc[ef_normal[ylabel]==y].max()[xlabel] <= x
+    # look for points with the same x value but larger y value
+    is_max_y = ef_normal.loc[ef_normal[xlabel]==x].max()[ylabel] <= y
+    # look for points that are larger in both x and y
+    is_double = len(ef_normal.loc[(ef_normal[xlabel]>x) & (ef_normal[ylabel]>y)])==0
+    
+    return is_max_x and is_max_y and is_double
+
+is_pareto = ef_normal.apply(lambda row: is_pareto_front(row, 'attack', 'defense'), axis=1)
+
+config_pareto = ef_normal.loc[is_pareto].sort_values('attack')
+
+fig, ax = plt.subplots(1,1, figsize=(8,5))
+sns.regplot(x='attack', y='defense', data=ef_normal, fit_reg=False, ax=ax);
+plt.plot(config_pareto['attack'], config_pareto['defense'], '--', label='Pareto frontier', alpha=0.5);
+
+pd.DataFrame(ef_normal.loc[is_pareto][['name','attack','defense']].sort_values('attack'))
+
+### 2.5  Radar chart
+
+radar_df = poke_df2[['name','hp', 'attack', 'defense', 'sp_attack', 'sp_defense' ,'speed']]
+radar_df.set_index('name', inplace=True)
+
+labels = ['hp', 'attack', 'defense', 'sp_attack', 'sp_defense' ,'speed']
+num_vars = len(labels)
+angles = np.linspace(0, 2 * np.pi, num_vars, endpoint=False).tolist()
+angles += angles[:1]
+fig, ax = plt.subplots(figsize=(6, 6), subplot_kw=dict(polar=True))
+
+ax.set_theta_offset(np.pi / 2)
+ax.set_theta_direction(-1)
+
+# ax.set_ylim(0, 100)
+ax.set_rlabel_position(180 / num_vars)
+
+ax.tick_params(colors='#222222')
+ax.tick_params(axis='y', labelsize=8)
+ax.grid(color='#AAAAAA')
+ax.spines['polar'].set_color('#222222')
+ax.set_facecolor('#EAEAEA')
+
+ax.set_title('Various Pokemons on Efficiency Frontier', y=1.08)
+
+for label, angle in zip(ax.get_xticklabels(), angles):
+    if angle in (0, np.pi):
+        label.set_horizontalalignment('center')
+    elif 0 < angle < np.pi:
+        label.set_horizontalalignment('left')
+    else:
+        label.set_horizontalalignment('right')
+
+ax.set_thetagrids(np.degrees(angles[:6]), labels)
+    
+def add_to_radar(name, color):
+    values = radar_df.loc[name].tolist()
+    values += values[:1]
+    ax.plot(angles, values, color=color, linewidth=1, label=name)
+    ax.fill(angles, values, color=color, alpha=0.3)
+    
+add_to_radar('Audino', '#CC3D3D') ; add_to_radar('Arceus', '#ABF200') ; add_to_radar('Regigigas', '#4641D9')
+
+ax.legend(loc='upper right', bbox_to_anchor=(1.5, 1) , prop={'size': 10});
