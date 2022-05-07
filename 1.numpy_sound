@@ -1,0 +1,56 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+
+
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.io.wavfile import read, write
+from IPython.display import Audio
+import requests
+
+url = "https://raw.githubusercontent.com/k5yi/econ2005/master/datasets/kid_laugh.wav"
+laugh = requests.get(url).content
+
+with open('kid_laugh.wav', 'wb') as f:
+    f.write(laugh)
+
+fs, data = read('kid_laugh.wav')
+ju
+# ### Sampling Rate 줄이기(예제)
+def down_sampling(sample, fs=44100, by=0.25):
+    step = int(1/by)
+    return int(fs*by), sample[::step, :]
+
+# ### 역재생 reversing a sound
+def reverse_play(sample):
+    return fs, sample[::-1]
+
+# ### 음압 조정 Volume
+def amplify(sample,level=0):
+    v1 = sample[:int(data.shape[0]/2),:]
+    v2 = sample[int(data.shape[0]/2):,:]*(10**(level/20))
+    return fs, np.concatenate((v1,v2))
+
+# ### 에코 Echo
+def echo_effect(sample, fs=44100, delay=0.5, repeat=2, effect=.2):
+    temp = np.zeros(shape=(int((repeat*(delay*sample.shape[0]/fs)*sample.shape[0])), sample.shape[1]))
+    temp[:sample.shape[0],:] += sample
+    
+    for i in range(repeat):
+        v = int(sample.shape[0]*delay*(i+1))
+        temp[v:v+sample.shape[0],:] += sample*((1-effect)**(i+1))
+
+    return temp
+
+# ### 동시 재생 mixing sounds
+url = "https://raw.githubusercontent.com/k5yi/econ2005/master/datasets/woosh.wav"
+woosh = requests.get(url).content
+
+with open('woosh.wav', 'wb') as f:
+    f.write(woosh)
+    
+fs_w, woosh = read('woosh.wav')
+
+def mixing(lst, weight=(.4, .6)):
+    return fs, np.resize(lst[0], lst[1].shape)*weight[0] + lst[1]*weight[1]
